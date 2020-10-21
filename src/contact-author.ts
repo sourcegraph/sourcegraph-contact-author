@@ -12,14 +12,17 @@ function observeActiveCodeEditorChanges(): Observable<sourcegraph.CodeEditor> {
     )
 }
 
-function observeCodeEditorSelectionChanges() {
+function observeCodeEditorSelectionChanges(): Observable<{
+    editor: sourcegraph.CodeEditor
+    selections: sourcegraph.Selection[]
+}> {
     return observeActiveCodeEditorChanges().pipe(
         switchMap(editor => from(editor.selectionsChanges).pipe(map(selections => ({ editor, selections }))))
     )
 }
 
-export function activate(ctx: sourcegraph.ExtensionContext): void {
-    ctx.subscriptions.add(
+export function activate(context: sourcegraph.ExtensionContext): void {
+    context.subscriptions.add(
         observeCodeEditorSelectionChanges().subscribe(async ({ selections, editor }) => {
             const blameHunks = await queryBlameHunks(editor.document.uri)
             console.log('blameHunks', blameHunks)
