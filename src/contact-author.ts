@@ -48,7 +48,7 @@ async function displayContactAuthorDecoration(editor: sourcegraph.CodeEditor, se
             {
                 range: new sourcegraph.Range(selectedLine, 0, selectedLine, 0),
                 after: {
-                    color: '#2aa198', // TODO: Pick correct color
+                    color: 'var(--text-muted)',
                     contentText: renderDecorationContent(author.person),
                     linkURL: mailtoUrl,
                 },
