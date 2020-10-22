@@ -37,16 +37,20 @@ export interface Hunk {
     }
 }
 
-export const queryBlameHunks = async (uri: string): Promise<Hunk[]> => {
+interface GitBlameResponse {
+    repository: { commit: { blob: { blame: Hunk[] } } }
+}
+
+export const queryBlameHunks = async (uri: string, line: number): Promise<Hunk[]> => {
     const { repo, rev, path } = resolveURI(uri)
-    const { data, errors } = await sourcegraph.commands.executeCommand(
+    const { data, errors }: { errors?: string[]; data: GitBlameResponse } = await sourcegraph.commands.executeCommand(
         'queryGraphQL',
         gql`
-            query GitBlame($repo: String!, $rev: String!, $path: String!) {
+            query GitBlame($repo: String!, $rev: String!, $path: String!, $line: Int!) {
                 repository(name: $repo) {
                     commit(rev: $rev) {
                         blob(path: $path) {
-                            blame(startLine: 0, endLine: 0) {
+                            blame(startLine: $line, endLine: $line) {
                                 startLine
                                 endLine
                                 author {
@@ -70,7 +74,7 @@ export const queryBlameHunks = async (uri: string): Promise<Hunk[]> => {
                 }
             }
         `,
-        { repo, rev, path }
+        { repo, rev, path, line }
     )
     if (errors && errors.length > 0) {
         throw new Error(errors.join('\n'))

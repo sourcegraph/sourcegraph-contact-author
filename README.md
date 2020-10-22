@@ -9,4 +9,3 @@ Sourcegraph extension that lets you contact the author of a particular line of c
 When you select a line while browsing a source file, the extension appends a "Contact author" link next to the line.
 
 The link is a `mailto:` link which will automatically open your default email client, and will pre-fill the recipient, subject and body of the email with the file name and the quoted line of code.
-

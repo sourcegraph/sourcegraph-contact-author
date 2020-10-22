@@ -1,7 +1,7 @@
 import * as sourcegraph from 'sourcegraph'
 import { EMPTY, from, Observable } from 'rxjs'
 import { filter, map, switchMap } from 'rxjs/operators'
-import { Hunk, queryBlameHunks, resolveURI } from './blame'
+import { Hunk, queryBlameHunks as queryBlameHunkForLine, resolveURI } from './blame'
 
 const decorationType = sourcegraph.app.createDecorationType()
 
@@ -25,7 +25,7 @@ function renderDecorationContent(authorPerson: Hunk['author']['person']): string
     return `📣 Contact author: ${authorPerson.displayName}`
 }
 
-function renderMailtoLink(email: string, body: string, subject: string) {
+function renderMailtoLink(email: string, body: string, subject: string): string {
     return `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
 }
 
@@ -37,39 +37,41 @@ function getFileName(uri: string): string {
     return resolveURI(uri).path
 }
 
+async function displayContactAuthorDecoration(editor: sourcegraph.CodeEditor, selectedLine: number): Promise<void> {
+    const blameHunks = await queryBlameHunkForLine(editor.document.uri, selectedLine)
+    const author = getAuthorForLine(selectedLine, blameHunks)
+    if (author) {
+        const fileName = getFileName(editor.document.uri)
+        const body = `On line ${selectedLine}:\n\n> ${getLineFromText(editor.document.text, selectedLine)}\n\n`
+        const mailtoUrl = renderMailtoLink(author.person.email, body, `About ${fileName}`)
+        editor.setDecorations(decorationType, [
+            {
+                range: new sourcegraph.Range(selectedLine, 0, selectedLine, 0),
+                after: {
+                    color: '#2aa198', // TODO: Pick correct color
+                    contentText: renderDecorationContent(author.person),
+                    linkURL: mailtoUrl,
+                },
+            },
+        ])
+    }
+}
+
 export function activate(context: sourcegraph.ExtensionContext): void {
     context.subscriptions.add(
-        observeCodeEditorSelectionChanges().subscribe(async ({ selections, editor }) => {
-            const blameHunks = await queryBlameHunks(editor.document.uri)
+        observeCodeEditorSelectionChanges().subscribe(({ selections, editor }) => {
             const selectedLine = selections.length > 0 ? selections[0].start.line : null
 
             if (selectedLine !== null) {
-                console.log({ selectedLine })
-                const author = getAuthorForLine(selectedLine, blameHunks)
-                console.log({ author })
-                if (author) {
-                    const fileName = getFileName(editor.document.uri)
-                    const body = `On line ${selectedLine}:\n\n> ${getLineFromText(
-                        editor.document.text,
-                        selectedLine
-                    )}\n\n`
-                    const mailtoUrl = renderMailtoLink(author.person.email, body, `About ${fileName}`)
-                    editor.setDecorations(decorationType, [
-                        {
-                            range: new sourcegraph.Range(selectedLine, 0, selectedLine, 0),
-                            after: {
-                                color: '#2aa198', // TODO: Pick correct color
-                                contentText: renderDecorationContent(author.person),
-                                linkURL: mailtoUrl,
-                            },
-                        },
-                    ])
-                }
+                displayContactAuthorDecoration(editor, selectedLine).catch(console.error)
             }
         })
     )
 }
 
+/**
+ * Get the author for a particular line, from the array of blame hunks.
+ */
 function getAuthorForLine(lineNumber: number, blameHunks: Hunk[]): Hunk['author'] | undefined {
     return blameHunks.find(hunk => lineNumber >= hunk.startLine && lineNumber <= hunk.endLine)?.author
 }
