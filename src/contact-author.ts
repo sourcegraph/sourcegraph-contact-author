@@ -1,7 +1,7 @@
 import * as sourcegraph from 'sourcegraph'
 import { EMPTY, from, Observable } from 'rxjs'
 import { filter, map, switchMap } from 'rxjs/operators'
-import { Hunk, queryBlameHunks } from './blame'
+import { Hunk, queryBlameHunks, resolveURI } from './blame'
 
 const decorationType = sourcegraph.app.createDecorationType()
 
@@ -21,24 +21,46 @@ function observeCodeEditorSelectionChanges(): Observable<{
     )
 }
 
+function renderDecorationContent(authorPerson: Hunk['author']['person']): string {
+    return `📣 Contact author: ${authorPerson.displayName}`
+}
+
+function renderMailtoLink(email: string, body: string, subject: string) {
+    return `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+}
+
+function getLineFromText(text: sourcegraph.TextDocument['text'] = '', lineNumber: number): string {
+    return text.split('\n')[lineNumber] || ''
+}
+
+function getFileName(uri: string): string {
+    return resolveURI(uri).path
+}
+
 export function activate(context: sourcegraph.ExtensionContext): void {
     context.subscriptions.add(
         observeCodeEditorSelectionChanges().subscribe(async ({ selections, editor }) => {
             const blameHunks = await queryBlameHunks(editor.document.uri)
-            console.log('blameHunks', blameHunks)
-            const selectedLine = selections.length ? selections[0].start.line : null
+            const selectedLine = selections.length > 0 ? selections[0].start.line : null
 
-            if (selectedLine) {
+            if (selectedLine !== null) {
                 console.log({ selectedLine })
                 const author = getAuthorForLine(selectedLine, blameHunks)
+                console.log({ author })
                 if (author) {
+                    const fileName = getFileName(editor.document.uri)
+                    const body = `On line ${selectedLine}:\n\n> ${getLineFromText(
+                        editor.document.text,
+                        selectedLine
+                    )}\n\n`
+                    const mailtoUrl = renderMailtoLink(author.person.email, body, `About ${fileName}`)
                     editor.setDecorations(decorationType, [
                         {
                             range: new sourcegraph.Range(selectedLine, 0, selectedLine, 0),
                             after: {
                                 color: '#2aa198', // TODO: Pick correct color
-                                contentText: `📣 Contact ${author.person.displayName}`,
-                                linkURL: `mailto:${author.person.email}`, // TODO: Add the link to the current file and line
+                                contentText: renderDecorationContent(author.person),
+                                linkURL: mailtoUrl,
                             },
                         },
                     ])
