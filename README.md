@@ -1,5 +1,14 @@
 # Contact Author (Sourcegraph extension)
 
+## ⚠️ Deprecation notice
+
+**Sourcegraph extensions have been deprecated with the September 2022 Sourcegraph
+release. [Learn more](https://docs.sourcegraph.com/extensions/deprecation).**
+
+The repo and the docs below are kept to support older Sourcegraph versions.
+
+## Description
+
 Sourcegraph extension that lets you contact the author of a particular line of code (the last author who modified of that line) by email.
 
 ![image](https://user-images.githubusercontent.com/602886/96913896-41efe480-1472-11eb-8c97-4fc075b2afb0.png)
