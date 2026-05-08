@@ -1,6 +1,5 @@
 import * as sourcegraph from 'sourcegraph'
-import { EMPTY, from, Observable } from 'rxjs'
-import { filter, map, switchMap } from 'rxjs/operators'
+import { EMPTY, filter, from, map, Observable, switchMap } from 'rxjs'
 import { Hunk, queryBlameHunks as queryBlameHunkForLine, resolveURI } from './blame'
 
 const decorationType = sourcegraph.app.createDecorationType()
